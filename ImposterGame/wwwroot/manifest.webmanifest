@@ -1,7 +1,7 @@
 {
-  "name": "Imposter Game",
-  "short_name": "Imposter",
-  "description": "A fun multiplayer imposter game - find the imposter before it's too late!",
+  "name": "Kahoot Clone - Quiz & Games",
+  "short_name": "Kahoot Clone",
+  "description": "A fun Kahoot-style quiz game and imposter game. Test your knowledge and compete for high scores!",
   "id": "./",
   "start_url": "./",
   "display": "standalone",
@@ -23,5 +23,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["games", "entertainment"]
+  "categories": ["games", "entertainment", "education"]
 }

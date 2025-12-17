@@ -1,0 +1,306 @@
+@page "/quiz"
+@inject QuizService QuizService
+@using ImposterGame.Models
+
+<PageTitle>Kahoot Quiz Game</PageTitle>
+
+<div class="quiz-container">
+    @if (gameState == GameState.Setup)
+    {
+        <div class="setup-screen">
+            <h1 class="game-title">🎮 Kahoot Quiz Game</h1>
+            <p class="game-subtitle">Test your knowledge and compete for the highest score!</p>
+
+            <div class="setup-form">
+                <div class="form-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" @bind="playerName" class="form-input" placeholder="Enter your name" />
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Quiz Category:</label>
+                    <select id="category" @bind="selectedCategory" class="form-select">
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category">@category</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="questionCount">Number of Questions:</label>
+                    <select id="questionCount" @bind="questionCount" class="form-select">
+                        @for (int i = 3; i <= 10; i++)
+                        {
+                            <option value="@i">@i Questions</option>
+                        }
+                    </select>
+                </div>
+
+                <button @onclick="StartQuiz" class="btn btn-start" disabled="@(string.IsNullOrWhiteSpace(playerName))">Start Quiz</button>
+            </div>
+        </div>
+    }
+    else if (gameState == GameState.Playing)
+    {
+        <div class="playing-screen">
+            <div class="quiz-header">
+                <div class="quiz-progress">
+                    <span>Question @(currentQuestionIndex + 1) of @questions.Count</span>
+                </div>
+                <div class="quiz-timer @(timeRemaining <= 5 ? "timer-warning" : "")">
+                    ⏱️ @timeRemaining s
+                </div>
+            </div>
+
+            @if (currentQuestion != null)
+            {
+                <div class="question-card">
+                    <h2 class="question-text">@currentQuestion.Question</h2>
+                    
+                    <div class="answers-grid">
+                        @for (int i = 0; i < currentQuestion.Answers.Count; i++)
+                        {
+                            var answerIndex = i;
+                            var colorClass = GetAnswerColorClass(i);
+                            var isSelected = selectedAnswer == i;
+                            var isCorrect = showingResult && i == currentQuestion.CorrectAnswerIndex;
+                            var isWrong = showingResult && isSelected && i != currentQuestion.CorrectAnswerIndex;
+
+                            <button 
+                                @onclick="() => SelectAnswer(answerIndex)" 
+                                class="answer-btn @colorClass @(isSelected ? "selected" : "") @(isCorrect ? "correct" : "") @(isWrong ? "wrong" : "")"
+                                disabled="@(selectedAnswer.HasValue || showingResult)">
+                                <div class="answer-shape">
+                                    @GetAnswerShape(i)
+                                </div>
+                                <div class="answer-text">
+                                    @currentQuestion.Answers[i]
+                                </div>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @if (showingResult)
+                {
+                    <div class="result-display">
+                        @if (lastAnswerCorrect)
+                        {
+                            <div class="result-correct">
+                                <h3>✓ Correct!</h3>
+                                <p>You earned @lastScore points</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="result-wrong">
+                                <h3>✗ Wrong!</h3>
+                                <p>The correct answer was: @currentQuestion.Answers[currentQuestion.CorrectAnswerIndex]</p>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    }
+    else if (gameState == GameState.Results)
+    {
+        <div class="results-screen">
+            <h1 class="results-title">🏆 Quiz Complete!</h1>
+            
+            <div class="final-score-card">
+                <div class="player-name">@playerName</div>
+                <div class="final-score">@totalScore</div>
+                <div class="score-label">TOTAL POINTS</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">@correctAnswers</div>
+                    <div class="stat-label">Correct Answers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@questions.Count</div>
+                    <div class="stat-label">Total Questions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">@Math.Round((double)correctAnswers / questions.Count * 100, 1)%</div>
+                    <div class="stat-label">Accuracy</div>
+                </div>
+            </div>
+
+            <button @onclick="PlayAgain" class="btn btn-start">Play Again</button>
+        </div>
+    }
+</div>
+
+@code {
+    private enum GameState
+    {
+        Setup,
+        Playing,
+        Results
+    }
+
+    private GameState gameState = GameState.Setup;
+    private List<string> categories = new();
+    private string selectedCategory = "General Knowledge";
+    private string playerName = "";
+    private int questionCount = 5;
+    
+    private List<QuizQuestion> questions = new();
+    private int currentQuestionIndex = 0;
+    private QuizQuestion? currentQuestion => currentQuestionIndex < questions.Count ? questions[currentQuestionIndex] : null;
+    
+    private int? selectedAnswer = null;
+    private bool showingResult = false;
+    private bool lastAnswerCorrect = false;
+    private int lastScore = 0;
+    
+    private int totalScore = 0;
+    private int correctAnswers = 0;
+    
+    private int timeRemaining = 20;
+    private System.Threading.Timer? timer;
+
+    protected override void OnInitialized()
+    {
+        categories = QuizService.GetCategories();
+        if (categories.Any())
+        {
+            selectedCategory = categories.First();
+        }
+    }
+
+    private void StartQuiz()
+    {
+        if (string.IsNullOrWhiteSpace(playerName)) return;
+
+        gameState = GameState.Playing;
+        questions = QuizService.GetQuiz(selectedCategory, questionCount);
+        currentQuestionIndex = 0;
+        totalScore = 0;
+        correctAnswers = 0;
+        
+        StartQuestion();
+    }
+
+    private void StartQuestion()
+    {
+        selectedAnswer = null;
+        showingResult = false;
+        lastAnswerCorrect = false;
+        lastScore = 0;
+        timeRemaining = currentQuestion?.TimeLimit ?? 20;
+        
+        // Start timer
+        timer?.Dispose();
+        timer = new System.Threading.Timer(async _ =>
+        {
+            if (timeRemaining > 0 && !selectedAnswer.HasValue)
+            {
+                timeRemaining--;
+                await InvokeAsync(StateHasChanged);
+            }
+            else if (timeRemaining <= 0 && !selectedAnswer.HasValue)
+            {
+                // Time's up!
+                await InvokeAsync(async () =>
+                {
+                    await TimeUp();
+                });
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task TimeUp()
+    {
+        selectedAnswer = -1; // Indicate no answer
+        await ShowResult();
+    }
+
+    private async Task SelectAnswer(int answerIndex)
+    {
+        if (selectedAnswer.HasValue || showingResult) return;
+
+        selectedAnswer = answerIndex;
+        timer?.Dispose();
+        
+        await ShowResult();
+    }
+
+    private async Task ShowResult()
+    {
+        if (currentQuestion == null) return;
+
+        showingResult = true;
+        lastAnswerCorrect = selectedAnswer == currentQuestion.CorrectAnswerIndex;
+        
+        if (lastAnswerCorrect)
+        {
+            lastScore = QuizService.CalculateScore(timeRemaining, currentQuestion.TimeLimit, true);
+            totalScore += lastScore;
+            correctAnswers++;
+        }
+        
+        StateHasChanged();
+        
+        // Wait 3 seconds before moving to next question
+        await Task.Delay(3000);
+        
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questions.Count)
+        {
+            StartQuestion();
+        }
+        else
+        {
+            gameState = GameState.Results;
+            timer?.Dispose();
+        }
+        
+        StateHasChanged();
+    }
+
+    private string GetAnswerColorClass(int index)
+    {
+        return index switch
+        {
+            0 => "answer-red",
+            1 => "answer-blue",
+            2 => "answer-yellow",
+            3 => "answer-green",
+            _ => "answer-red"
+        };
+    }
+
+    private string GetAnswerShape(int index)
+    {
+        return index switch
+        {
+            0 => "▲",
+            1 => "◆",
+            2 => "●",
+            3 => "■",
+            _ => "▲"
+        };
+    }
+
+    private void PlayAgain()
+    {
+        gameState = GameState.Setup;
+        questions.Clear();
+        currentQuestionIndex = 0;
+        selectedAnswer = null;
+        showingResult = false;
+        totalScore = 0;
+        correctAnswers = 0;
+        timer?.Dispose();
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+}
