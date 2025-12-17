@@ -1,9 +1,11 @@
-# Aspire Imposter Game
+# Kahoot Clone - Quiz & Games
 
-A Progressive Web App (PWA) game built with .NET 10 Blazor WebAssembly and designed to run completely client-side. This application can be side-loaded on an iPhone and deployed to Azure Static Web Apps.
+A Progressive Web App (PWA) game built with .NET 10 Blazor WebAssembly and designed to run completely client-side. This application features a Kahoot-style quiz game and an imposter game, and can be side-loaded on an iPhone and deployed to Azure Static Web Apps.
 
 ## Features
 
+- ✅ **Kahoot-Style Quiz Game**: Multiple-choice questions with scoring based on speed and accuracy
+- ✅ **Imposter Game**: Social deduction game where players find the imposter
 - ✅ Built with .NET 10 and Blazor WebAssembly
 - ✅ Progressive Web App (PWA) with offline support
 - ✅ Optimized for iOS devices with proper meta tags and icons
@@ -11,12 +13,40 @@ A Progressive Web App (PWA) game built with .NET 10 Blazor WebAssembly and desig
 - ✅ Ready for Azure Static Web Apps deployment
 - ✅ Service Worker for caching and offline functionality
 
+## Game Modes
+
+### 🧠 Quiz Game (Kahoot-Style)
+- Multiple-choice questions across 4 categories:
+  - General Knowledge
+  - Science
+  - History
+  - Technology
+- Scoring system: Base points (500) + Speed bonus (up to 500)
+- Timed questions (20 seconds each)
+- Colorful, animated answer buttons
+- Final results with statistics
+
+### 🎭 Imposter Game
+- Social deduction game for 2-10 players
+- One player is the imposter who doesn't know the secret word
+- Multiple themed word banks
+- Pass-and-play gameplay
+
 ## Project Structure
 
 ```
-aspire-imposter-game/
+kahootclone/
 ├── ImposterGame/              # Main Blazor WebAssembly PWA project
 │   ├── Pages/                 # Razor pages/components
+│   │   ├── Home.razor         # Game selection page
+│   │   ├── Quiz.razor         # Kahoot-style quiz game
+│   │   └── Imposter.razor     # Imposter game
+│   ├── Services/              # Application services
+│   │   ├── QuizService.cs     # Quiz questions and scoring
+│   │   └── WordBankService.cs # Word banks for imposter game
+│   ├── Models/                # Data models
+│   │   ├── QuizQuestion.cs
+│   │   └── PlayerScore.cs
 │   ├── wwwroot/              # Static assets
 │   │   ├── manifest.webmanifest    # PWA manifest for iOS/Android
 │   │   ├── service-worker.js       # Service worker for offline support
@@ -114,12 +144,19 @@ All game logic runs in the browser using Blazor WebAssembly. No server-side API 
 
 ## Future Enhancements
 
+### Quiz Game
+- [ ] Add more question categories and questions
+- [ ] Implement multiplayer mode with rooms
+- [ ] Add global leaderboards
+- [ ] Create custom quiz builder
+- [ ] Add difficulty levels
+
+### Imposter Game
 - [ ] Add multiplayer functionality with SignalR
 - [ ] Implement game lobby system
 - [ ] Add chat features
 - [ ] Create game rooms
 - [ ] Add player authentication
-- [ ] Implement leaderboards
 
 ## License
 
