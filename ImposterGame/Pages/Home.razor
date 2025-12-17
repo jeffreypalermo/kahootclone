@@ -1,0 +1,178 @@
+﻿@page "/"
+@inject WordBankService WordBank
+
+<PageTitle>Imposter Game</PageTitle>
+
+<div class="game-container">
+    @if (gameState == GameState.Setup)
+    {
+        <div class="setup-screen">
+            <h1 class="game-title">🎭 Imposter Game</h1>
+            <p class="game-subtitle">One player is the imposter. Find them before it's too late!</p>
+
+            <div class="setup-form">
+                <div class="form-group">
+                    <label for="playerCount">Number of Players:</label>
+                    <select id="playerCount" @bind="selectedPlayerCount" class="form-select">
+                        @for (int i = 2; i <= 10; i++)
+                        {
+                            <option value="@i">@i Players</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="theme">Theme:</label>
+                    <select id="theme" @bind="selectedTheme" class="form-select">
+                        @foreach (var theme in themes)
+                        {
+                            <option value="@theme">@theme</option>
+                        }
+                    </select>
+                </div>
+
+                <button @onclick="StartGame" class="btn btn-start">Start Game</button>
+            </div>
+        </div>
+    }
+    else if (gameState == GameState.PlayerReveal)
+    {
+        <div class="reveal-screen">
+            <div class="player-info">
+                <h2>Player @currentPlayer of @totalPlayers</h2>
+                <p class="instruction">@GetInstructionText()</p>
+            </div>
+
+            @if (showingWord)
+            {
+                <div class="word-display">
+                    @if (IsCurrentPlayerImposter())
+                    {
+                        <div class="imposter-reveal">
+                            <h3>🎭 YOU ARE THE IMPOSTER! 🎭</h3>
+                            <p>You don't know the secret word. Try to blend in and figure it out!</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="word-reveal">
+                            <h3>The Secret Word:</h3>
+                            <div class="secret-word">@secretWord</div>
+                            <p class="hint">Remember this word and don't reveal it to the imposter!</p>
+                        </div>
+                    }
+                    <button @onclick="HideWord" class="btn btn-primary btn-large">Hide and Pass Device</button>
+                </div>
+            }
+            else
+            {
+                <button @onclick="ShowWord" class="btn btn-primary btn-large">
+                    @(currentPlayer == totalPlayers ? "Reveal My Role" : "Show My Word")
+                </button>
+            }
+        </div>
+    }
+    else if (gameState == GameState.Playing)
+    {
+        <div class="playing-screen">
+            <h2>🎮 Game in Progress</h2>
+            <div class="game-info">
+                <p><strong>Players:</strong> @totalPlayers</p>
+                <p><strong>Theme:</strong> @selectedTheme</p>
+                <p class="instruction">Now discuss and try to find the imposter!</p>
+                <p class="instruction-small">The imposter doesn't know the secret word.</p>
+            </div>
+            <button @onclick="ResetGame" class="btn btn-reset">Start New Game</button>
+        </div>
+    }
+</div>
+
+@code {
+    private enum GameState
+    {
+        Setup,
+        PlayerReveal,
+        Playing
+    }
+
+    private GameState gameState = GameState.Setup;
+    private int selectedPlayerCount = 3;
+    private string selectedTheme = "Technology";
+    private List<string> themes = new();
+    private int currentPlayer = 1;
+    private int totalPlayers = 0;
+    private int imposterPlayer = 0;
+    private string secretWord = "";
+    private bool showingWord = false;
+
+    protected override void OnInitialized()
+    {
+        themes = WordBank.GetThemes();
+        if (themes.Any())
+        {
+            selectedTheme = themes.First();
+        }
+    }
+
+    private void StartGame()
+    {
+        totalPlayers = selectedPlayerCount;
+        currentPlayer = 1;
+        gameState = GameState.PlayerReveal;
+        showingWord = false;
+
+        // Select random imposter
+        var random = new Random();
+        imposterPlayer = random.Next(1, totalPlayers + 1);
+
+        // Get secret word
+        secretWord = WordBank.GetRandomWord(selectedTheme);
+    }
+
+    private void ShowWord()
+    {
+        showingWord = true;
+    }
+
+    private void HideWord()
+    {
+        showingWord = false;
+        currentPlayer++;
+
+        if (currentPlayer > totalPlayers)
+        {
+            gameState = GameState.Playing;
+        }
+    }
+
+    private bool IsCurrentPlayerImposter()
+    {
+        return currentPlayer == imposterPlayer;
+    }
+
+    private string GetInstructionText()
+    {
+        if (!showingWord)
+        {
+            if (currentPlayer == 1)
+            {
+                return "Pass the device to Player 1. Player 1, press the button when ready.";
+            }
+            else
+            {
+                return $"Pass the device to Player {currentPlayer}. Player {currentPlayer}, press the button when ready.";
+            }
+        }
+        return "Look at your screen, then hide it and pass the device.";
+    }
+
+    private void ResetGame()
+    {
+        gameState = GameState.Setup;
+        currentPlayer = 1;
+        totalPlayers = 0;
+        imposterPlayer = 0;
+        secretWord = "";
+        showingWord = false;
+    }
+}
