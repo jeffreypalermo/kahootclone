@@ -313,11 +313,10 @@ public class QuizService
         }
 
         var allQuestions = _quizzes[category];
-        var random = new Random();
         
         // Shuffle and take the requested number of questions
         return allQuestions
-            .OrderBy(x => random.Next())
+            .OrderBy(x => Random.Shared.Next())
             .Take(Math.Min(questionCount, allQuestions.Count))
             .ToList();
     }
